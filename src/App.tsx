@@ -4,16 +4,17 @@
  * Google Cloud AI Builders Cup
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { TopNavbar } from './components/TopNavbar';
 import { BhoomiMitraChat, ChatMessage } from './components/BhoomiMitraChat';
 import { FieldAdvisorSidebar } from './components/FieldAdvisorSidebar';
 import { CameraCaptureModal } from './components/CameraCaptureModal';
 import { SoilCardOCRModal } from './components/SoilCardOCRModal';
-import { SupportedLanguage, TRANSLATIONS } from './services/translations';
+import { LanguageSelectModal } from './components/LanguageSelectModal';
+import { SupportedLanguage, TRANSLATIONS, INDIAN_LANGUAGES } from './services/translations';
 import { PRESET_PROFILES, FarmProfile } from './services/agronomyEngine';
 import { voiceController } from './services/audioManager';
-import { Compass, X, MapPin } from 'lucide-react';
+import { Compass, X, MapPin, Globe } from 'lucide-react';
 
 export default function App() {
   const [language, setLanguage] = useState<SupportedLanguage>('hi');
@@ -30,6 +31,7 @@ export default function App() {
   const [isCameraModalOpen, setIsCameraModalOpen] = useState<boolean>(false);
   const [isOcrModalOpen, setIsOcrModalOpen] = useState<boolean>(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState<boolean>(false);
+  const [isLanguageModalOpen, setIsLanguageModalOpen] = useState<boolean>(false);
 
   // Photo attached to next chat message
   const [attachedPhoto, setAttachedPhoto] = useState<string | null>(null);
@@ -37,13 +39,32 @@ export default function App() {
   // Conversation history
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
-  // Update profile when selection changes
+  // Update profile when preset selection changes
   const handleSelectProfile = (id: string) => {
     setActiveProfileId(id);
     if (PRESET_PROFILES[id]) {
       setActiveProfile(PRESET_PROFILES[id]);
     }
     setIsMobileDrawerOpen(false);
+  };
+
+  // When GPS detects the farm location
+  const handleApplyGpsProfile = (profile: FarmProfile) => {
+    setActiveProfile(profile);
+    setActiveProfileId(profile.id);
+    setIsMobileDrawerOpen(false);
+
+    const gpsMsg: ChatMessage = {
+      id: `gps_${Date.now()}`,
+      sender: 'assistant',
+      text:
+        language === 'hi'
+          ? `📍 आपके खेत का स्थान मिल गया!\n• क्षेत्र: ${profile.baseline.district}, ${profile.baseline.state}\n• मिट्टी: ${profile.baseline.predominantTexture} (सामान्य pH: ${profile.baseline.pH})\n• उपग्रह नमी (Sentinel-2): ${profile.telemetry.soilMoistureStatus}\n• अनुशंसित फसल: ${profile.mandi.recommendedCrop}\nअब आप अपनी फसल या मिट्टी से संबंधित कोई भी सवाल पूछ सकते हैं।`
+          : `📍 Farm footprint located via GPS!\n• Region: ${profile.baseline.district}, ${profile.baseline.state}\n• Soil Texture: ${profile.baseline.predominantTexture} (pH: ${profile.baseline.pH})\n• Satellite Moisture: ${profile.telemetry.soilMoistureStatus}\n• Recommended Crop: ${profile.mandi.recommendedCrop}\nYou can now ask tailored field questions.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setMessages((prev) => [...prev, gpsMsg]);
   };
 
   // Toggle Voice Mute
@@ -96,12 +117,15 @@ export default function App() {
     setIsOcrModalOpen(false);
   };
 
+  const activeLangName = INDIAN_LANGUAGES.find((l) => l.code === language)?.nativeName || 'हिन्दी';
+
   return (
     <div className="flex flex-col h-screen w-full bg-stone-950 text-stone-100 font-sans antialiased overflow-hidden">
-      {/* 1. Clean Top Navigation Bar (Contract compliant: 3 zones, zero pills) */}
+      {/* 1. Clean Top Navigation Bar */}
       <TopNavbar
         language={language}
         onLanguageChange={setLanguage}
+        onOpenLanguageModal={() => setIsLanguageModalOpen(true)}
         isMuted={isMuted}
         onToggleMute={handleToggleMute}
         onResetChat={handleResetChat}
@@ -119,6 +143,7 @@ export default function App() {
               onSelectProfile={handleSelectProfile}
               activeProfile={activeProfile}
               onOpenOcr={() => setIsOcrModalOpen(true)}
+              onApplyGpsProfile={handleApplyGpsProfile}
             />
           </aside>
 
@@ -126,18 +151,29 @@ export default function App() {
           <section className="col-span-1 lg:col-span-8 h-full bg-stone-900/60 border border-stone-850 rounded-3xl overflow-hidden shadow-xl flex flex-col relative">
             {/* Mobile quick banner to open farm context/guide drawer */}
             <div className="lg:hidden flex items-center justify-between px-4 py-2 bg-stone-900 border-b border-stone-800 text-xs text-stone-300">
-              <span className="flex items-center gap-1.5 font-medium text-emerald-400">
-                <MapPin className="w-3.5 h-3.5" />
-                <span>{activeProfile.nameHi}</span>
+              <span className="flex items-center gap-1.5 font-medium text-emerald-400 truncate max-w-[170px]">
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{activeProfile.nameHi}</span>
               </span>
-              <button
-                type="button"
-                onClick={() => setIsMobileDrawerOpen(true)}
-                className="flex items-center gap-1 text-[11px] text-stone-300 bg-stone-800 hover:bg-stone-750 px-2.5 py-1 rounded-lg border border-stone-700 transition-colors"
-              >
-                <Compass className="w-3 h-3 text-amber-400" />
-                <span>क्षेत्र व मिट्टी जांच</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsLanguageModalOpen(true)}
+                  className="flex items-center gap-1 text-[11px] text-emerald-300 bg-stone-850 hover:bg-stone-800 px-2 py-1 rounded-lg border border-stone-750 transition-colors"
+                  title="भाषा बदलें"
+                >
+                  <Globe className="w-3 h-3 text-emerald-400" />
+                  <span>{activeLangName}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileDrawerOpen(true)}
+                  className="flex items-center gap-1 text-[11px] text-stone-200 bg-stone-800 hover:bg-stone-750 px-2.5 py-1 rounded-lg border border-stone-700 transition-colors"
+                >
+                  <Compass className="w-3 h-3 text-amber-400" />
+                  <span>खेत व जांच</span>
+                </button>
+              </div>
             </div>
 
             {/* Chatbot Engine Component */}
@@ -159,7 +195,7 @@ export default function App() {
 
       {/* 3. Mobile Farm Context & Soil Check Drawer */}
       {isMobileDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-xs lg:hidden animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/75 backdrop-blur-xs lg:hidden animate-in fade-in duration-150">
           <div className="bg-stone-900 border-t border-stone-800 rounded-t-3xl max-h-[85vh] overflow-y-auto p-4 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-stone-800">
               <h3 className="text-sm font-bold text-white">खेत व मिट्टी जांच निर्देश</h3>
@@ -181,6 +217,7 @@ export default function App() {
                 setIsMobileDrawerOpen(false);
                 setIsOcrModalOpen(true);
               }}
+              onApplyGpsProfile={handleApplyGpsProfile}
             />
           </div>
         </div>
@@ -200,6 +237,14 @@ export default function App() {
         onClose={() => setIsOcrModalOpen(false)}
         language={language}
         onApplyExtractedBaseline={handleApplyExtractedSoilCard}
+      />
+
+      {/* 6. All 23 Indian Languages Selection Modal */}
+      <LanguageSelectModal
+        isOpen={isLanguageModalOpen}
+        onClose={() => setIsLanguageModalOpen(false)}
+        currentLanguage={language}
+        onSelectLanguage={setLanguage}
       />
     </div>
   );

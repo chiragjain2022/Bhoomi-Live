@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Upload, CheckCircle2, FileSearch, Sparkles, Loader2 } from 'lucide-react';
+import { X, Upload, CheckCircle2, FileSearch, Sparkles, Loader2, Camera } from 'lucide-react';
 import { SupportedLanguage, TRANSLATIONS } from '../services/translations';
 
 interface SoilCardOCRModalProps {
@@ -85,125 +85,160 @@ export const SoilCardOCRModal: React.FC<SoilCardOCRModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl p-6 shadow-2xl border-4 border-[#1B4332] text-[#111111] max-h-[90vh] overflow-y-auto">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="flex items-center gap-2.5 mb-4">
-          <div className="p-2.5 rounded-2xl bg-[#1B4332] text-white">
-            <FileSearch className="w-6 h-6" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg bg-stone-900 border border-stone-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-800 bg-stone-950/70">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-950 border border-emerald-600/40 flex items-center justify-center text-emerald-400">
+              <FileSearch className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white tracking-tight">
+                {language === 'hi' ? 'मृदा स्वास्थ्य कार्ड OCR स्कैनर' : 'Soil Health Card OCR Vision'}
+              </h3>
+              <p className="text-xs text-stone-400">
+                {language === 'hi'
+                  ? 'सरकारी कार्ड की फोटो से पोषक तत्व आंकड़े निकालें'
+                  : 'Extract verified lab metrics via Gemini Vision'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-xl font-black text-[#111111]">
-              {language === 'hi' ? 'मृदा स्वास्थ्य कार्ड OCR स्कैनर' : 'Soil Health Card OCR Vision'}
-            </h3>
-            <p className="text-xs font-semibold text-gray-600">
-              {language === 'hi' ? 'कागजी कार्ड की फोटो से सटीक आंकड़े निकालें' : 'Extract verified lab values via Gemini Vision'}
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-750 flex items-center justify-center text-stone-400 hover:text-white transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Upload Zone */}
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="cursor-pointer border-3 border-dashed border-[#1B4332]/40 rounded-2xl p-6 flex flex-col items-center justify-center bg-emerald-50/50 hover:bg-emerald-50 transition text-center"
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileChange}
-          />
+        {/* Modal Body */}
+        <div className="p-4 sm:p-5 overflow-y-auto space-y-4">
+          {/* Upload Zone */}
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="cursor-pointer border-2 border-dashed border-stone-700 hover:border-emerald-500 rounded-2xl p-6 flex flex-col items-center justify-center bg-stone-850/50 hover:bg-stone-850 transition-colors text-center group"
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
 
-          {imagePreview ? (
-            <div className="relative w-full max-h-48 rounded-xl overflow-hidden shadow-inner">
-              <img src={imagePreview} alt="Soil Card Preview" className="w-full h-full object-contain" />
-            </div>
-          ) : (
-            <div className="flex flex-col items-center">
-              <Upload className="w-10 h-10 text-[#1B4332] mb-2 animate-bounce" />
-              <div className="text-sm font-black text-[#1B4332]">
-                {language === 'hi' ? 'कार्ड की फोटो चुनें या कैमरा से खींचें' : 'Tap to upload or photograph card'}
+            {imagePreview ? (
+              <div className="relative w-full max-h-52 rounded-xl overflow-hidden shadow-inner border border-stone-700">
+                <img src={imagePreview} alt="Soil Card Preview" className="w-full h-full object-contain" />
               </div>
-              <div className="text-xs text-gray-500 mt-1">Supports JPEG, PNG, WebP</div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <div className="w-12 h-12 rounded-2xl bg-stone-800 group-hover:bg-emerald-950 border border-stone-700 group-hover:border-emerald-500 flex items-center justify-center text-stone-400 group-hover:text-emerald-400 mb-2.5 transition-colors">
+                  <Upload className="w-6 h-6 animate-pulse" />
+                </div>
+                <div className="text-sm font-bold text-stone-200 group-hover:text-white">
+                  {language === 'hi' ? 'कार्ड की फोटो चुनें या अपलोड करें' : 'Tap to upload or snap card photo'}
+                </div>
+                <div className="text-xs text-stone-500 mt-1">JPEG, PNG, WebP समर्थित</div>
+              </div>
+            )}
+          </div>
+
+          {/* Change photo button if uploaded */}
+          {imagePreview && (
+            <div className="flex justify-between items-center text-xs">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-stone-400 hover:text-stone-200 underline"
+              >
+                दूसरी फोटो चुनें
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setImagePreview(null);
+                  setOcrResult(null);
+                }}
+                className="text-amber-400 hover:text-amber-300"
+              >
+                हटाएं
+              </button>
+            </div>
+          )}
+
+          {/* Analyze Action Button */}
+          {imagePreview && !ocrResult && (
+            <button
+              type="button"
+              onClick={runOCR}
+              disabled={isAnalyzing}
+              className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-sm shadow-lg shadow-emerald-950/40 transition-colors disabled:opacity-50"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{t.ocrProcessing}</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>{language === 'hi' ? 'कार्ड का विश्लेषण करें' : 'Extract Parameters via Vision OCR'}</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Extracted Values Display */}
+          {ocrResult && (
+            <div className="space-y-3 bg-stone-950/80 p-4 rounded-2xl border border-stone-800 animate-in fade-in">
+              <div className="flex items-center justify-between text-xs font-semibold text-emerald-400 border-b border-stone-850 pb-2">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>{ocrResult.sampleNo || 'SHC Verified'}</span>
+                </span>
+                <span className="text-stone-300">{ocrResult.farmerName || 'Farmer Record'}</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+                <div className="p-2.5 bg-stone-900 rounded-xl border border-stone-800">
+                  <div className="text-[10px] text-stone-400 font-medium">pH Level</div>
+                  <div className="text-base font-bold text-emerald-400">{ocrResult.pH}</div>
+                </div>
+                <div className="p-2.5 bg-stone-900 rounded-xl border border-stone-800">
+                  <div className="text-[10px] text-stone-400 font-medium">EC (dS/m)</div>
+                  <div className="text-base font-bold text-stone-200">{ocrResult.ec}</div>
+                </div>
+                <div className="p-2.5 bg-stone-900 rounded-xl border border-stone-800">
+                  <div className="text-[10px] text-stone-400 font-medium">Organic C %</div>
+                  <div className="text-base font-bold text-amber-400">{ocrResult.organicCarbon}%</div>
+                </div>
+                <div className="p-2.5 bg-stone-900 rounded-xl border border-stone-800">
+                  <div className="text-[10px] text-stone-400 font-medium">N (kg/ha)</div>
+                  <div className="text-base font-bold text-stone-200">{ocrResult.nitrogenKgHa}</div>
+                </div>
+                <div className="p-2.5 bg-stone-900 rounded-xl border border-stone-800">
+                  <div className="text-[10px] text-stone-400 font-medium">P (kg/ha)</div>
+                  <div className="text-base font-bold text-stone-200">{ocrResult.phosphorusKgHa}</div>
+                </div>
+                <div className="p-2.5 bg-stone-900 rounded-xl border border-stone-800">
+                  <div className="text-[10px] text-stone-400 font-medium">K (kg/ha)</div>
+                  <div className="text-base font-bold text-stone-200">{ocrResult.potassiumKgHa}</div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleApply}
+                className="mt-3 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-md transition-colors"
+              >
+                {language === 'hi' ? 'यह डेटा खाद पर्ची पर लागू करें' : 'Apply Lab Data to Prescription'}
+              </button>
             </div>
           )}
         </div>
-
-        {/* Analyze Button */}
-        {imagePreview && !ocrResult && (
-          <button
-            onClick={runOCR}
-            disabled={isAnalyzing}
-            className="mt-4 w-full flex items-center justify-center gap-2 py-3.5 bg-[#1B4332] hover:bg-[#2D6A4F] text-white rounded-2xl font-black text-sm shadow-md transition disabled:opacity-50"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>{t.ocrProcessing}</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5 text-[#FFB703]" />
-                <span>{language === 'hi' ? 'कार्ड का विश्लेषण करें' : 'Extract Parameters via Vision OCR'}</span>
-              </>
-            )}
-          </button>
-        )}
-
-        {/* Extracted Values Display */}
-        {ocrResult && (
-          <div className="mt-4 space-y-3 bg-gray-50 p-4 rounded-2xl border border-gray-200 animate-in fade-in">
-            <div className="flex items-center justify-between text-xs font-black text-emerald-800">
-              <span className="flex items-center gap-1">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>{ocrResult.sampleNo || 'SHC Verified'}</span>
-              </span>
-              <span>{ocrResult.farmerName || 'Farmer Record'}</span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 pt-2">
-              <div className="p-2 bg-white rounded-xl border text-center">
-                <div className="text-[10px] text-gray-500 font-bold">pH Level</div>
-                <div className="text-base font-black text-[#1B4332]">{ocrResult.pH}</div>
-              </div>
-              <div className="p-2 bg-white rounded-xl border text-center">
-                <div className="text-[10px] text-gray-500 font-bold">EC (dS/m)</div>
-                <div className="text-base font-black text-[#1B4332]">{ocrResult.ec}</div>
-              </div>
-              <div className="p-2 bg-white rounded-xl border text-center">
-                <div className="text-[10px] text-gray-500 font-bold">Organic C %</div>
-                <div className="text-base font-black text-[#1B4332]">{ocrResult.organicCarbon}%</div>
-              </div>
-              <div className="p-2 bg-white rounded-xl border text-center">
-                <div className="text-[10px] text-gray-500 font-bold">N (kg/ha)</div>
-                <div className="text-base font-black text-gray-800">{ocrResult.nitrogenKgHa}</div>
-              </div>
-              <div className="p-2 bg-white rounded-xl border text-center">
-                <div className="text-[10px] text-gray-500 font-bold">P (kg/ha)</div>
-                <div className="text-base font-black text-gray-800">{ocrResult.phosphorusKgHa}</div>
-              </div>
-              <div className="p-2 bg-white rounded-xl border text-center">
-                <div className="text-[10px] text-gray-500 font-bold">K (kg/ha)</div>
-                <div className="text-base font-black text-gray-800">{ocrResult.potassiumKgHa}</div>
-              </div>
-            </div>
-
-            <button
-              onClick={handleApply}
-              className="mt-3 w-full py-3 bg-[#FFB703] hover:bg-[#FFAA00] text-black font-black text-sm rounded-xl shadow transition"
-            >
-              {language === 'hi' ? 'यह डेटा खाद पर्ची पर लागू करें' : 'Apply Lab Data to Prescription'}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

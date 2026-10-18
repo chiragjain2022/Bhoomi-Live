@@ -8,10 +8,26 @@ class VoiceController {
   private currentAudio: HTMLAudioElement | null = null;
   private currentSpeechToken: number = 0;
   private isMuted: boolean = false;
+  private speechRate: number = 0.95;
   private onStateChange: ((isPlaying: boolean) => void) | null = null;
 
   public setListener(listener: (isPlaying: boolean) => void) {
     this.onStateChange = listener;
+  }
+
+  public setSpeechRate(rate: number) {
+    this.speechRate = Math.max(0.7, Math.min(1.5, rate));
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.playbackRate = this.speechRate;
+      } catch (err) {
+        console.warn('Could not set playback rate on audio', err);
+      }
+    }
+  }
+
+  public getSpeechRate(): number {
+    return this.speechRate;
   }
 
   public setMuted(muted: boolean) {
@@ -130,7 +146,7 @@ class VoiceController {
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.95;
+      utterance.rate = this.speechRate;
       utterance.pitch = 1.0;
 
       // Dynamically select appropriate regional BCP 47 code for all 23 Indian languages

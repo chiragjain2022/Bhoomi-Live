@@ -5,6 +5,7 @@ import { Sprout, Volume2, VolumeX, RotateCcw, Globe } from 'lucide-react';
 interface TopNavbarProps {
   language: SupportedLanguage;
   onLanguageChange: (lang: SupportedLanguage) => void;
+  onOpenLanguageModal?: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
   onResetChat: () => void;
@@ -14,6 +15,7 @@ interface TopNavbarProps {
 export const TopNavbar: React.FC<TopNavbarProps> = ({
   language,
   onLanguageChange,
+  onOpenLanguageModal,
   isMuted,
   onToggleMute,
   onResetChat,
@@ -55,30 +57,19 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </button>
 
-          {/* Language Switcher (All 23 Indian Languages) */}
-          <div className="relative flex items-center">
-            <label htmlFor="top-lang-select" className="sr-only">भाषा चुनें (Select Language)</label>
-            <div className="flex items-center gap-1.5 bg-stone-800/90 border border-stone-700 hover:border-emerald-500/60 rounded-xl px-2.5 py-1.5 text-xs text-stone-200 transition-colors">
-              <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <select
-                id="top-lang-select"
-                value={language}
-                onChange={(e) => onLanguageChange(e.target.value as SupportedLanguage)}
-                className="bg-transparent border-none text-xs font-medium text-stone-200 focus:outline-hidden cursor-pointer max-w-[110px] sm:max-w-[150px] truncate pr-1"
-                title="अपनी क्षेत्रीय भाषा चुनें"
-              >
-                {INDIAN_LANGUAGES.map((lang) => (
-                  <option
-                    key={lang.code}
-                    value={lang.code}
-                    className="bg-stone-900 text-white py-1"
-                  >
-                    {lang.nativeName} ({lang.englishName})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          {/* Language Switcher Button (All 23 Indian Languages) */}
+          <button
+            type="button"
+            onClick={onOpenLanguageModal}
+            className="flex items-center gap-1.5 bg-stone-800/90 hover:bg-stone-750 border border-stone-700 hover:border-emerald-500/60 rounded-xl px-2.5 py-1.5 text-xs text-stone-200 transition-colors shadow-xs"
+            title="अपनी क्षेत्रीय भाषा चुनें (23 भाषाएं)"
+            aria-label="Change Language"
+          >
+            <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="font-semibold text-emerald-300">
+              {INDIAN_LANGUAGES.find((l) => l.code === language)?.nativeName || 'हिन्दी'}
+            </span>
+          </button>
 
           {/* New Chat Reset Button */}
           <button

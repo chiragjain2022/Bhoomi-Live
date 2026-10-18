@@ -17,6 +17,9 @@ import {
   CheckCircle,
   Clock,
   Layers,
+  Copy,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import { SupportedLanguage, TRANSLATIONS, INDIAN_LANGUAGES } from '../services/translations';
 import { AmendmentDosage, FarmProfile } from '../services/agronomyEngine';
@@ -58,9 +61,77 @@ export const BhoomiMitraChat: React.FC<BhoomiMitraChatProps> = ({
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [activeSpeakingMsgId, setActiveSpeakingMsgId] = useState<string | null>(null);
   const [subscribedPubSubMap, setSubscribedPubSubMap] = useState<Record<string, boolean>>({});
+  const [acresMap, setAcresMap] = useState<Record<string, number>>({});
+  const [speechRate, setSpeechRate] = useState<number>(0.95);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Toggle voice playback speed
+  const toggleSpeechRate = () => {
+    const nextRate = speechRate === 0.95 ? 0.8 : speechRate === 0.8 ? 1.15 : 0.95;
+    setSpeechRate(nextRate);
+    voiceController.setSpeechRate(nextRate);
+  };
+
+  // Change acreage for a prescription card
+  const handleUpdateAcres = (msgId: string, delta: number) => {
+    setAcresMap((prev) => {
+      const current = prev[msgId] || 1.0;
+      const updated = Math.max(0.25, Math.min(20, Math.round((current + delta) * 4) / 4));
+      return { ...prev, [msgId]: updated };
+    });
+  };
+
+  const handleSetExactAcres = (msgId: string, val: number) => {
+    setAcresMap((prev) => ({ ...prev, [msgId]: val }));
+  };
+
+  // Share or copy prescription to clipboard / WhatsApp
+  const handleSharePrescription = async (msg: ChatMessage) => {
+    if (!msg.prescription) return;
+    const acres = acresMap[msg.id] || 1.0;
+    const u = Math.round(msg.prescription.fertilizerDosageKgAcre.urea * acres);
+    const d = Math.round(msg.prescription.fertilizerDosageKgAcre.dap * acres);
+    const m = Math.round(msg.prescription.fertilizerDosageKgAcre.mop * acres);
+    const z = Math.round(msg.prescription.fertilizerDosageKgAcre.zincSulfate * acres * 10) / 10;
+    const f = Math.round(msg.prescription.fertilizerDosageKgAcre.fymTons * acres * 10) / 10;
+
+    const summary = `🌾 भूमि मित्र (Bhoomi Mitra) - मृदा सिफारिश पर्ची
+📍 क्षेत्र: ${activeProfile.baseline.district}, ${activeProfile.baseline.state}
+🌱 अनुशंसित फसल: ${msg.prescription.recommendedCrop}
+📏 रकबा: ${acres} एकड़
+
+खाद की सटीक मात्रा:
+• यूरिया: ${u} किग्रा
+• डीएपी: ${d} किग्रा
+• पोटाश (MOP): ${m} किग्रा
+• जिंक सल्फेट: ${z} किग्रा
+• सड़ी गोबर खाद: ${f} टन
+
+सिफारिश: बुवाई पर डीएपी+पोटाश तथा पहली सिंचाई पर यूरिया+जिंक का संतुलित प्रयोग करें।`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'भूमि मित्र मृदा पर्ची',
+          text: summary,
+        });
+        return;
+      } catch {
+        // fallback to clipboard
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(summary);
+      setCopiedMsgId(msg.id);
+      setTimeout(() => setCopiedMsgId(null), 2500);
+    } catch {
+      // ignore
+    }
+  };
 
   // Auto-scroll to bottom of conversation
   const scrollToBottom = () => {
@@ -338,103 +409,178 @@ export const BhoomiMitraChat: React.FC<BhoomiMitraChatProps> = ({
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
 
                 {/* Assistant Prescription Card (Rendered neatly inline without overlapping) */}
-                {!isUser && msg.prescription && (
-                  <div className="mt-4 pt-3 border-t border-stone-800 bg-stone-950/70 rounded-2xl p-3.5 text-xs text-stone-200 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                        <Sprout className="w-4 h-4" />
-                        <span>{t.actionCardTitle}</span>
-                      </div>
-                      <span className="text-[11px] text-amber-400 font-mono">
-                        {activeProfile.baseline.district}
-                      </span>
-                    </div>
+                {!isUser && msg.prescription && (() => {
+                  const acres = acresMap[msg.id] || 1.0;
+                  const u = Math.round(msg.prescription.fertilizerDosageKgAcre.urea * acres);
+                  const d = Math.round(msg.prescription.fertilizerDosageKgAcre.dap * acres);
+                  const m = Math.round(msg.prescription.fertilizerDosageKgAcre.mop * acres);
+                  const z = Math.round(msg.prescription.fertilizerDosageKgAcre.zincSulfate * acres * 10) / 10;
+                  const f = Math.round(msg.prescription.fertilizerDosageKgAcre.fymTons * acres * 10) / 10;
 
-                    {/* Crop & Fertilizer recommendation header */}
-                    <div className="grid grid-cols-2 gap-2 bg-stone-900/90 p-2.5 rounded-xl border border-stone-800">
-                      <div>
-                        <span className="text-[10px] text-stone-400 block">अनुशंसित फसल:</span>
-                        <span className="font-semibold text-white">
-                          {msg.prescription.recommendedCrop}
+                  return (
+                    <div className="mt-4 pt-3 border-t border-stone-800 bg-stone-950/70 rounded-2xl p-3.5 text-xs text-stone-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                          <Sprout className="w-4 h-4" />
+                          <span>{t.actionCardTitle}</span>
+                        </div>
+                        <span className="text-[11px] text-amber-400 font-mono">
+                          {activeProfile.baseline.district}
                         </span>
                       </div>
+
+                      {/* Interactive Acre Multiplier */}
+                      <div className="bg-stone-900/90 p-2.5 rounded-xl border border-stone-800 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] text-stone-400 block font-medium">खेत का रकबा (Land Area):</span>
+                          <span className="text-xs font-bold text-emerald-300">
+                            {acres} एकड़ (Acres)
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateAcres(msg.id, -0.5)}
+                            className="w-7 h-7 rounded-lg bg-stone-800 hover:bg-stone-750 flex items-center justify-center text-stone-300 border border-stone-700 transition-colors"
+                            title="कम करें"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          {[0.5, 1, 2, 5].map((val) => (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => handleSetExactAcres(msg.id, val)}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                                acres === val
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-stone-800 text-stone-400 hover:text-white'
+                              }`}
+                            >
+                              {val}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateAcres(msg.id, 0.5)}
+                            className="w-7 h-7 rounded-lg bg-stone-800 hover:bg-stone-750 flex items-center justify-center text-stone-300 border border-stone-700 transition-colors"
+                            title="बढ़ाएं"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Crop & Fertility Level */}
+                      <div className="grid grid-cols-2 gap-2 bg-stone-900/90 p-2.5 rounded-xl border border-stone-800">
+                        <div>
+                          <span className="text-[10px] text-stone-400 block">अनुशंसित फसल:</span>
+                          <span className="font-semibold text-white">
+                            {msg.prescription.recommendedCrop}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-stone-400 block">मिट्टी उर्वरता स्तर:</span>
+                          <span className="font-semibold text-emerald-400">
+                            {msg.prescription.soilHealthVerdict.fertilityRating}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Scaled Exact Fertilizer Numbers */}
                       <div>
-                        <span className="text-[10px] text-stone-400 block">मिट्टी उर्वरता स्तर:</span>
-                        <span className="font-semibold text-emerald-400">
-                          {msg.prescription.soilHealthVerdict.fertilityRating}
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] font-semibold text-stone-300">
+                            {acres} एकड़ के लिए कुल खाद (किलोग्राम):
+                          </span>
+                          <span className="text-[10px] text-emerald-400 font-mono">ICAR STCR गणना</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5 text-center">
+                          <div className="bg-stone-900 p-2 rounded-xl border border-stone-800">
+                            <span className="text-[10px] text-stone-400 block">यूरिया</span>
+                            <span className="font-bold text-white text-sm">
+                              {u} <span className="text-[10px] font-normal text-stone-400">kg</span>
+                            </span>
+                          </div>
+                          <div className="bg-stone-900 p-2 rounded-xl border border-stone-800">
+                            <span className="text-[10px] text-stone-400 block">डीएपी</span>
+                            <span className="font-bold text-white text-sm">
+                              {d} <span className="text-[10px] font-normal text-stone-400">kg</span>
+                            </span>
+                          </div>
+                          <div className="bg-stone-900 p-2 rounded-xl border border-stone-800">
+                            <span className="text-[10px] text-stone-400 block">पोटाश (MOP)</span>
+                            <span className="font-bold text-white text-sm">
+                              {m} <span className="text-[10px] font-normal text-stone-400">kg</span>
+                            </span>
+                          </div>
+                          <div className="bg-stone-900 p-2 rounded-xl border border-stone-800">
+                            <span className="text-[10px] text-stone-400 block">जिंक सल्फेट</span>
+                            <span className="font-bold text-amber-400 text-sm">
+                              {z} <span className="text-[10px] font-normal text-stone-400">kg</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Organic & Irrigation advice */}
+                      <div className="text-[11px] text-stone-300 bg-stone-900/60 p-2.5 rounded-xl border border-stone-800/80">
+                        <span className="font-semibold text-amber-400 block mb-0.5">
+                          जैविक व समयबद्ध सिफारिश:
                         </span>
+                        <p>
+                          {f} टन सड़ी गोबर खाद या कम्पोस्ट मिलाएं।{' '}
+                          {msg.prescription.applicationSchedule?.[0]?.instructionHi ||
+                            msg.prescription.organicAmendments?.[0]?.recipeHi}
+                        </p>
+                      </div>
+
+                      {/* Action Buttons: WhatsApp Alert & Share Prescription */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleSubscribeAlert(msg.id)}
+                          className={`py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition-colors ${
+                            subscribedPubSubMap[msg.id]
+                              ? 'bg-emerald-950 border border-emerald-600 text-emerald-300'
+                              : 'bg-emerald-700 hover:bg-emerald-600 text-white shadow-sm'
+                          }`}
+                        >
+                          {subscribedPubSubMap[msg.id] ? (
+                            <>
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span>{t.subscribedSuccess}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Bell className="w-3.5 h-3.5" />
+                              <span>{t.subscribeAlerts}</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSharePrescription(msg)}
+                          className="py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 transition-colors"
+                          title="दुकानदार या व्हाट्सएप पर शेयर करें"
+                        >
+                          {copiedMsgId === msg.id ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              <span className="text-emerald-300 font-bold">पर्ची कॉपी हो गई!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Share2 className="w-3.5 h-3.5 text-amber-400" />
+                              <span>पर्ची शेयर / कॉपी करें</span>
+                            </>
+                          )}
+                        </button>
                       </div>
                     </div>
-
-                    {/* Exact Fertilizer Numbers */}
-                    <div>
-                      <span className="text-[11px] font-semibold text-stone-300 block mb-1">
-                        प्रति एकड़ खाद की सटीक मात्रा (किलोग्राम):
-                      </span>
-                      <div className="grid grid-cols-4 gap-1.5 text-center">
-                        <div className="bg-stone-900 p-1.5 rounded-lg border border-stone-800">
-                          <span className="text-[10px] text-stone-400 block">यूरिया</span>
-                          <span className="font-bold text-white text-sm">
-                            {msg.prescription.fertilizerDosageKgAcre.urea}
-                          </span>
-                        </div>
-                        <div className="bg-stone-900 p-1.5 rounded-lg border border-stone-800">
-                          <span className="text-[10px] text-stone-400 block">डीएपी</span>
-                          <span className="font-bold text-white text-sm">
-                            {msg.prescription.fertilizerDosageKgAcre.dap}
-                          </span>
-                        </div>
-                        <div className="bg-stone-900 p-1.5 rounded-lg border border-stone-800">
-                          <span className="text-[10px] text-stone-400 block">पोटाश</span>
-                          <span className="font-bold text-white text-sm">
-                            {msg.prescription.fertilizerDosageKgAcre.mop}
-                          </span>
-                        </div>
-                        <div className="bg-stone-900 p-1.5 rounded-lg border border-stone-800">
-                          <span className="text-[10px] text-stone-400 block">जिंक सल्फेट</span>
-                          <span className="font-bold text-amber-400 text-sm">
-                            {msg.prescription.fertilizerDosageKgAcre.zincSulfate}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Organic & Irrigation advice */}
-                    <div className="text-[11px] text-stone-300 bg-stone-900/60 p-2.5 rounded-xl border border-stone-800/80">
-                      <span className="font-semibold text-amber-400 block mb-0.5">
-                        जैविक व समयबद्ध सिफारिश:
-                      </span>
-                      <p>
-                        {msg.prescription.fertilizerDosageKgAcre.fymTons} टन सड़ी गोबर खाद या कम्पोस्ट मिलाएं।{' '}
-                        {msg.prescription.applicationSchedule?.[0]?.instructionHi ||
-                          msg.prescription.organicAmendments?.[0]?.recipeHi}
-                      </p>
-                    </div>
-
-                    {/* WhatsApp Alert Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleSubscribeAlert(msg.id)}
-                      className={`w-full py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition-colors ${
-                        subscribedPubSubMap[msg.id]
-                          ? 'bg-emerald-950 border border-emerald-600 text-emerald-300'
-                          : 'bg-emerald-700 hover:bg-emerald-600 text-white shadow-sm'
-                      }`}
-                    >
-                      {subscribedPubSubMap[msg.id] ? (
-                        <>
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          <span>{t.subscribedSuccess}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Bell className="w-3.5 h-3.5" />
-                          <span>{t.subscribeAlerts}</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Footer Bar of Message */}
                 <div className="flex items-center justify-between gap-3 mt-2 text-[10px] text-stone-400">
@@ -442,33 +588,45 @@ export const BhoomiMitraChat: React.FC<BhoomiMitraChatProps> = ({
 
                   {/* Audio Listen / Stop button for assistant messages */}
                   {!isUser && (
-                    <button
-                      type="button"
-                      onClick={() => handleToggleVoicePlayback(msg.id, msg.text)}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-colors ${
-                        isSpeakingThis
-                          ? 'bg-amber-500/20 text-amber-400 font-semibold'
-                          : 'bg-stone-800/80 hover:bg-stone-750 text-stone-300'
-                      }`}
-                      title={isSpeakingThis ? t.stopVoice : t.listenAudio}
-                    >
-                      {isSpeakingThis ? (
-                        <>
-                          <VolumeX className="w-3.5 h-3.5 text-amber-400" />
-                          <span>{t.stopVoice}</span>
-                          <span className="flex gap-0.5 ml-1">
-                            <span className="w-1 h-3 bg-amber-400 animate-pulse"></span>
-                            <span className="w-1 h-2 bg-amber-400 animate-pulse delay-75"></span>
-                            <span className="w-1 h-3.5 bg-amber-400 animate-pulse delay-150"></span>
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>{t.listenAudio}</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {/* Speed control pill */}
+                      <button
+                        type="button"
+                        onClick={toggleSpeechRate}
+                        className="px-2 py-0.5 rounded-md bg-stone-800 hover:bg-stone-750 text-[10px] text-stone-300 font-mono transition-colors border border-stone-700/60"
+                        title="आवाज की गति (Speed)"
+                      >
+                        {speechRate}x
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleVoicePlayback(msg.id, msg.text)}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-colors ${
+                          isSpeakingThis
+                            ? 'bg-amber-500/20 text-amber-400 font-semibold'
+                            : 'bg-stone-800/80 hover:bg-stone-750 text-stone-300'
+                        }`}
+                        title={isSpeakingThis ? t.stopVoice : t.listenAudio}
+                      >
+                        {isSpeakingThis ? (
+                          <>
+                            <VolumeX className="w-3.5 h-3.5 text-amber-400" />
+                            <span>{t.stopVoice}</span>
+                            <span className="flex gap-0.5 ml-1">
+                              <span className="w-1 h-3 bg-amber-400 animate-pulse"></span>
+                              <span className="w-1 h-2 bg-amber-400 animate-pulse delay-75"></span>
+                              <span className="w-1 h-3.5 bg-amber-400 animate-pulse delay-150"></span>
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>{t.listenAudio}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -497,25 +655,49 @@ export const BhoomiMitraChat: React.FC<BhoomiMitraChatProps> = ({
       {/* Floating Bottom Input Bar (Thumb Zone) */}
       <div className="fixed sm:absolute bottom-0 left-0 right-0 z-30 bg-stone-950/95 backdrop-blur-md border-t border-stone-800 p-3 sm:p-4">
         <div className="max-w-2xl mx-auto space-y-2">
-          {/* Photo Preview Attachment Strip */}
+          {/* Photo Preview Attachment Strip with 1-Tap Triage Chips */}
           {attachedPhoto && (
-            <div className="flex items-center justify-between bg-stone-900 border border-stone-700 rounded-2xl px-3 py-2 animate-in slide-in-from-bottom-2">
-              <div className="flex items-center gap-2.5">
-                <img
-                  src={attachedPhoto}
-                  alt="Field preview"
-                  className="w-10 h-10 rounded-xl object-cover border border-emerald-500/50"
-                />
-                <span className="text-xs text-stone-200 font-medium">{t.photoAttached}</span>
+            <div className="bg-stone-900 border border-stone-700 rounded-2xl p-2.5 animate-in slide-in-from-bottom-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <img
+                    src={attachedPhoto}
+                    alt="Field preview"
+                    className="w-12 h-12 rounded-xl object-cover border border-emerald-500/50 shadow-sm shrink-0"
+                  />
+                  <div>
+                    <span className="text-xs text-stone-100 font-semibold block">{t.photoAttached}</span>
+                    <span className="text-[11px] text-emerald-400">फोटो जांचने के लिए नीचे प्रश्न चुनें या भेजें:</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClearAttachedPhoto}
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-stone-400 hover:text-white hover:bg-stone-800 transition-colors"
+                  title={t.removePhoto}
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={onClearAttachedPhoto}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-stone-400 hover:text-white hover:bg-stone-800"
-                title={t.removePhoto}
-              >
-                <X className="w-4 h-4" />
-              </button>
+
+              {/* Instant Triage Chips for Photo */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+                {[
+                  { label: '🌿 पीली पत्तियां', query: 'इस पत्ती के पीलेपन का कारण और उपचार बताएं' },
+                  { label: '💧 मिट्टी की नमी', query: 'इस मिट्टी की बनावट और नमी जांचकर सिंचाई सलाह दें' },
+                  { label: '🐛 कीट व रोग प्रकोप', query: 'इस फसल में लगे कीट या बीमारी की पहचान और दवा बताएं' },
+                  { label: '🧪 सही खाद मात्रा', query: 'इस फसल के लिए सही खाद और स्प्रे का समय बताएं' },
+                ].map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSendMessage(chip.query, false)}
+                    className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700/80 shrink-0 text-[11px] transition-colors"
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
