@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1B4332" />
+      <stop offset="100%" stop-color="#081C15" />
+    </linearGradient>
+    <linearGradient id="soil" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#8B5E3C" />
+      <stop offset="100%" stop-color="#4A2810" />
+    </linearGradient>
+    <linearGradient id="leaf" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2D6A4F" />
+      <stop offset="50%" stop-color="#52B788" />
+      <stop offset="100%" stop-color="#74C69D" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD166" />
+      <stop offset="100%" stop-color="#FFB703" />
+    </linearGradient>
+  </defs>
+  <!-- Background with rounded squircle -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  
+  <!-- Outer Satellite Telemetry Ring -->
+  <circle cx="256" cy="256" r="210" stroke="#52B788" stroke-width="6" stroke-dasharray="16 12" opacity="0.35" fill="none" />
+  <circle cx="256" cy="256" r="160" stroke="#FFB703" stroke-width="4" stroke-dasharray="8 8" opacity="0.45" fill="none" />
+  
+  <!-- Soil Mound -->
+  <path d="M 96 380 Q 256 310 416 380 L 416 430 Q 256 460 96 430 Z" fill="url(#soil)" />
+  
+  <!-- Soil Moisture / Mineral Dots -->
+  <circle cx="180" cy="385" r="8" fill="#FFB703" />
+  <circle cx="256" cy="395" r="10" fill="#52B788" />
+  <circle cx="330" cy="385" r="8" fill="#74C69D" />
+
+  <!-- Central Healthy Sprout Plant -->
+  <path d="M 256 340 C 256 260 256 190 256 140" stroke="#52B788" stroke-width="14" stroke-linecap="round" />
+  
+  <!-- Left Leaf -->
+  <path d="M 256 260 C 200 240 140 270 140 200 C 190 190 250 230 256 260 Z" fill="url(#leaf)" />
+  <!-- Right Leaf -->
+  <path d="M 256 220 C 312 200 372 230 372 160 C 322 150 262 190 256 220 Z" fill="url(#leaf)" />
+  
+  <!-- Multimodal Pulse / Radio Waves (Top Center) -->
+  <circle cx="256" cy="110" r="14" fill="url(#gold)" />
+  <path d="M 230 90 A 36 36 0 0 1 282 90" stroke="url(#gold)" stroke-width="6" stroke-linecap="round" fill="none" />
+  <path d="M 210 70 A 64 64 0 0 1 302 70" stroke="url(#gold)" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8" />
+  <path d="M 190 50 A 96 96 0 0 1 322 50" stroke="url(#gold)" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.5" />
+</svg>

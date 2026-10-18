@@ -1,0 +1,12 @@
+{
+  "name": "BhoomiLive (भूमि-लाइव)",
+  "description": "Real-Time Multimodal Field Agronomist fusing Gemini Multimodal Live, Google Earth Engine satellite telemetry, and regional BigQuery Soil Health Card baselines.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
